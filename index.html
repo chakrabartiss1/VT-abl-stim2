@@ -1,0 +1,954 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scar-Related VT Entrainment Mapping: Interactive EP Simulator</title>
+<style>
+:root {
+  --ink: #0f172a;
+  --muted: #475569;
+  --line: #cbd5e1;
+  --bg: #f8fafc;
+  --white: #ffffff;
+  --primary: #1e40af;
+  --primary-hover: #1e3a8a;
+  
+  --green: #16a34a;
+  --green-bg: #dcfce7;
+  --yellow: #d97706;
+  --yellow-bg: #fef3c7;
+  --red: #dc2626;
+  --red-bg: #fee2e2;
+  --purple: #7c3aed;
+  --purple-bg: #f3e8ff;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  padding: 20px 14px;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.card {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px 22px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.04);
+}
+
+h1 { font-size: 1.75rem; font-weight: 800; margin: 0 0 6px; color: #0f172a; }
+h2 { font-size: 1.2rem; font-weight: 700; margin: 0 0 10px; color: #1e293b; }
+p.sub { color: var(--muted); font-size: 0.92rem; margin: 0 0 18px; line-height: 1.4; }
+
+/* Workbench Desktop Grid Layout */
+.workbench-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+@media (min-width: 1024px) {
+  .workbench-grid {
+    grid-template-columns: 1.15fr 0.85fr;
+    align-items: start;
+  }
+}
+
+/* SVG Circuit Container */
+.circuit-frame {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.circuit-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #f8fafc;
+}
+
+.circuit-svg .site {
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.circuit-svg .site:hover {
+  filter: drop-shadow(0 0 8px rgba(30, 64, 175, 0.7));
+}
+
+.site-active circle {
+  stroke: #f59e0b !important;
+  stroke-width: 4px !important;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* Electrogram Canvas Container */
+.egm-card {
+  margin-top: 16px;
+  background: #0f172a;
+  border-radius: 12px;
+  padding: 14px;
+  color: white;
+}
+
+.egm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #334155;
+  padding-bottom: 6px;
+}
+
+.egm-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+.egm-subtitle {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.canvas-container {
+  position: relative;
+  width: 100%;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 380px;
+  background: #090d16;
+  border-radius: 8px;
+}
+
+/* Controls Column Stack */
+.controls-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.param-card {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.param-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.rank-badge {
+  background: #e2e8f0;
+  color: #1e293b;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 5px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border: 1px solid #cbd5e1;
+}
+
+.param-desc {
+  font-size: 0.76rem;
+  color: var(--muted);
+  margin: 0 0 8px;
+  line-height: 1.3;
+}
+
+.scale-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  font-weight: 600;
+  font-size: 0.82rem;
+}
+
+input[type=range], select {
+  width: 100%;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+select {
+  padding: 7px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  font: inherit;
+  background: white;
+  color: var(--ink);
+  font-size: 0.85rem;
+}
+
+.btn-reset {
+  background: #e2e8f0;
+  color: #334155;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: background 0.2s;
+}
+
+.btn-reset:hover { background: #cbd5e1; }
+
+/* Heatmap Grid */
+.sites-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.site-card {
+  border-radius: 12px;
+  padding: 14px;
+  border: 2px solid var(--line);
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.site-card.green {
+  background: var(--green-bg);
+  border-color: var(--green);
+  color: #14532d;
+}
+
+.site-card.yellow {
+  background: var(--yellow-bg);
+  border-color: var(--yellow);
+  color: #78350f;
+}
+
+.site-card.red {
+  background: var(--red-bg);
+  border-color: var(--red);
+  color: #7f1d1d;
+}
+
+.site-name {
+  font-size: 0.9rem;
+  font-weight: 800;
+  margin-bottom: 2px;
+}
+
+.site-prob {
+  font-size: 1.5rem;
+  font-weight: 900;
+  margin: 2px 0;
+}
+
+.site-status {
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  border-radius: 8px;
+  display: inline-block;
+}
+
+.green .site-status { background: var(--green); color: white; }
+.yellow .site-status { background: var(--yellow); color: white; }
+.red .site-status { background: var(--red); color: white; }
+
+/* Clinical Rationale Cards Grid */
+.rationale-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.rationale-card {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  border-left: 5px solid var(--primary);
+}
+
+.rationale-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.rationale-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.rationale-text {
+  font-size: 0.82rem;
+  color: #334155;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.rationale-highlight {
+  font-weight: 600;
+  color: var(--primary);
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- WORKBENCH SECTION -->
+  <div class="card">
+    <h1>Scar-Related VT Entrainment Mapping: Interactive EP Simulator</h1>
+    <p class="sub">Click any anatomical site marker on the left scar model to inspect its aligned local electrograms (EGMs) relative to surface VT QRS onset, or adjust diagnostic variables to compute real-time site likelihoods.</p>
+
+    <div class="workbench-grid">
+      
+      <!-- LEFT COLUMN: SVG CIRCUIT & MULTI-CHANNEL EGM DISPLAY -->
+      <div>
+        <h2>1. Re-Entry Circuit & Multi-Channel Electrograms</h2>
+        
+        <!-- SVG Diagram -->
+        <div class="circuit-frame">
+          <svg id="circuitReference" class="circuit-svg" viewBox="0 0 760 420" aria-label="Scar-related VT re-entry circuit schematic">
+            <defs>
+              <linearGradient id="healthy" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#f0fdf4"/>
+                <stop offset="100%" stop-color="#bbf7d0"/>
+              </linearGradient>
+              <linearGradient id="scarf" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#94a3b8"/>
+                <stop offset="100%" stop-color="#475569"/>
+              </linearGradient>
+              <marker id="greenArrow" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+                <path d="M0 0L6 3L0 6Z" fill="#15803d"/>
+              </marker>
+            </defs>
+
+            <!-- Healthy Myocardium -->
+            <path d="M 80 40 C 20 120 40 280 120 365 C 210 450 390 420 510 370 C 630 320 690 205 645 105 C 600 15 470 15 370 40 C 260 60 170 10 80 40 Z" fill="url(#healthy)" stroke="#16a34a" stroke-width="2.5"/>
+            <text x="30" y="25" font-size="11" font-weight="bold" fill="#15803d">Healthy Myocardium (Fast Return Pathway)</text>
+
+            <!-- Dense Scar -->
+            <path d="M 220 100 C 280 60 410 75 475 120 C 535 160 555 250 505 310 C 450 370 330 375 255 330 C 185 285 170 160 220 100 Z" fill="url(#scarf)" stroke="#334155" stroke-width="2"/>
+            <text x="360" y="95" text-anchor="middle" font-size="12" fill="#ffffff" font-weight="bold">Dense Scar / Protected Channel</text>
+
+            <!-- Slow Isthmus -->
+            <path id="slowPath" d="M 195 210 C 250 205 280 225 315 250 C 345 270 380 280 415 265 C 455 250 480 220 530 205" fill="none" stroke="#dc2626" stroke-width="11" stroke-linecap="round"/>
+            <path d="M 195 210 C 250 205 280 225 315 250 C 345 270 380 280 415 265 C 455 250 480 220 530 205" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="4 5"/>
+            <text x="360" y="240" text-anchor="middle" font-size="11" fill="#ffffff" font-weight="bold">Slow Critical Isthmus</text>
+
+            <!-- Return Loops -->
+            <path id="upperPath" d="M 530 205 C 600 170 620 125 590 90 C 545 40 440 40 355 60 C 275 80 235 125 195 210" fill="none" stroke="#16a34a" stroke-width="4.5" stroke-linecap="round" marker-end="url(#greenArrow)"/>
+            <path id="lowerPath" d="M 530 205 C 605 240 620 295 580 340 C 520 395 410 405 310 360 C 240 330 180 270 195 210" fill="none" stroke="#16a34a" stroke-width="4.5" stroke-linecap="round" marker-end="url(#greenArrow)"/>
+
+            <!-- Bystanders -->
+            <path id="innerPath" d="M 315 250 C 295 220 315 190 345 175 C 370 165 380 150 372 130" fill="none" stroke="#d97706" stroke-width="4.5" stroke-linecap="round"/>
+            <text x="380" y="145" font-size="10" fill="#b45309" font-weight="bold">Inner Bystander (IB)</text>
+
+            <path id="outerPath" d="M 530 205 C 580 190 620 205 650 240 C 665 255 670 275 680 295" fill="none" stroke="#7c3aed" stroke-width="4.5" stroke-dasharray="5 4" stroke-linecap="round"/>
+            <text x="615" y="315" font-size="10" fill="#6d28d9" font-weight="bold">Outer Bystander (OB)</text>
+
+            <!-- Clickable Site Markers -->
+            <g class="site" id="site-entrance" transform="translate(195,210)">
+              <circle r="14" fill="#2563eb" stroke="#ffffff" stroke-width="2.5"/>
+              <text y="4" fill="#ffffff" text-anchor="middle" font-size="8" font-weight="bold">ENT</text>
+            </g>
+
+            <g class="site" id="site-early" transform="translate(260,220)">
+              <circle r="13" fill="#2563eb" stroke="#ffffff" stroke-width="2.5"/>
+              <text y="4" fill="#ffffff" text-anchor="middle" font-size="7.5" font-weight="bold">EARLY</text>
+            </g>
+
+            <g class="site" id="site-mid" transform="translate(360,270)">
+              <circle r="13" fill="#dc2626" stroke="#ffffff" stroke-width="2.5"/>
+              <text y="4" fill="#ffffff" text-anchor="middle" font-size="8" font-weight="bold">MID</text>
+            </g>
+
+            <g class="site" id="site-late" transform="translate(445,248)">
+              <circle r="13" fill="#2563eb" stroke="#ffffff" stroke-width="2.5"/>
+              <text y="4" fill="#ffffff" text-anchor="middle" font-size="7.5" font-weight="bold">LATE</text>
+            </g>
+
+            <g class="site" id="site-exit" transform="translate(530,205)">
+              <circle r="14" fill="#16a34a" stroke="#ffffff" stroke-width="2.5"/>
+              <text y="4" fill="#ffffff" text-anchor="middle" font-size="8" font-weight="bold">EXIT</text>
+            </g>
+
+            <g class="site" id="site-inner" transform="translate(345,175)">
+              <circle r="12" fill="#d97706" stroke="#ffffff" stroke-width="2.5"/>
+              <text y="4" fill="#ffffff" text-anchor="middle" font-size="7.5" font-weight="bold">IB</text>
+            </g>
+
+            <g class="site" id="site-outer" transform="translate(650,240)">
+              <circle r="12" fill="#7c3aed" stroke="#ffffff" stroke-width="2.5"/>
+              <text y="4" fill="#ffffff" text-anchor="middle" font-size="7.5" font-weight="bold">OB</text>
+            </g>
+          </svg>
+        </div>
+
+        <!-- Aligned Electrograms Display -->
+        <div class="egm-card">
+          <div class="egm-header">
+            <span class="egm-title">Multi-Channel Electrogram Alignment During VT</span>
+            <span class="egm-subtitle">Dashed line = Surface VT QRS Onset</span>
+          </div>
+          <div class="canvas-container">
+            <canvas id="egmCanvas" width="600" height="380"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN: DIAGNOSTIC INPUT CONTROLS -->
+      <div>
+        <h2>2. Ranked Diagnostic Criteria</h2>
+        <div class="controls-stack">
+          
+          <!-- RANK 1 -->
+          <div class="param-card">
+            <div class="card-header">
+              <h3 class="param-title">1. |S–QRS − EGM–QRS| Alignment</h3>
+              <span class="rank-badge">Rank 1 · 30% Weight</span>
+            </div>
+            <p class="param-desc">Differentiates active circuit from dead-end inner bystanders.</p>
+            <div class="scale-row">
+              <span>Alignment Delta:</span>
+              <strong id="match-val">5 ms</strong>
+            </div>
+            <input type="range" id="match-slider" min="0" max="60" value="5" step="5">
+            <div style="display:flex; justify-content:space-between; font-size:0.68rem; color:var(--muted); margin-top:3px;">
+              <span>0–20 ms (Matched / Active Pathway)</span>
+              <span>>20 ms (Mismatch / Dead End)</span>
+            </div>
+          </div>
+
+          <!-- RANK 2 -->
+          <div class="param-card">
+            <div class="card-header">
+              <h3 class="param-title">2. PPI − VTCL Difference</h3>
+              <span class="rank-badge">Rank 2 · 25% Weight</span>
+            </div>
+            <p class="param-desc">Confirms whether catheter is within or adjacent to the circuit.</p>
+            <div class="scale-row">
+              <span>PPI − VTCL:</span>
+              <strong id="ppi-val">15 ms</strong>
+            </div>
+            <input type="range" id="ppi-slider" min="0" max="80" value="15" step="5">
+            <div style="display:flex; justify-content:space-between; font-size:0.68rem; color:var(--muted); margin-top:3px;">
+              <span>≤ 30 ms (In Circuit)</span>
+              <span>> 30 ms (Remote / Outer Loop)</span>
+            </div>
+          </div>
+
+          <!-- RANK 3 -->
+          <div class="param-card">
+            <div class="card-header">
+              <h3 class="param-title">3. 12-Lead Paced ECG Fusion</h3>
+              <span class="rank-badge">Rank 3 · 20% Weight</span>
+            </div>
+            <p class="param-desc">Confirms activation via designated channel exit.</p>
+            <select id="fusion-select">
+              <option value="concealed">Concealed Fusion (12/12 ECG Match)</option>
+              <option value="manifest">Manifest Fusion (Morphology Change)</option>
+            </select>
+          </div>
+
+          <!-- RANK 4 -->
+          <div class="param-card">
+            <div class="card-header">
+              <h3 class="param-title">4. S–QRS / VTCL % Ratio</h3>
+              <span class="rank-badge">Rank 4 · 25% Weight</span>
+            </div>
+            <p class="param-desc">Sub-localizes spatial position (Entrance vs Mid vs Exit).</p>
+            <div class="scale-row">
+              <span>S–QRS / VTCL:</span>
+              <strong id="sqrs-val">45%</strong>
+            </div>
+            <input type="range" id="sqrs-slider" min="10" max="90" value="45" step="5">
+            <div style="display:flex; justify-content:space-between; font-size:0.68rem; color:var(--muted); margin-top:3px;">
+              <span>&lt;30% (Exit)</span>
+              <span>30–70% (Mid)</span>
+              <span>>70% (Entrance)</span>
+            </div>
+          </div>
+
+          <button id="reset-btn" class="btn-reset">Reset Parameters</button>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MIDDLE SECTION: HEATMAP SITE PROBABILITIES -->
+  <div class="card">
+    <h2>3. Composite Diagnostic Site Likelihood</h2>
+    <p class="sub">Dynamic probabilities calculated from integrated electrophysiological entrainment principles.</p>
+
+    <div class="sites-grid">
+      
+      <div id="site-card-mid" class="site-card green">
+        <div class="site-name">Central Isthmus</div>
+        <div class="site-prob" id="prob-mid">90%</div>
+        <span class="site-status" id="status-mid">Likely (Green)</span>
+      </div>
+
+      <div id="site-card-entrance" class="site-card yellow">
+        <div class="site-name">Entrance Channel</div>
+        <div class="site-prob" id="prob-entrance">25%</div>
+        <span class="site-status" id="status-entrance">Possible (Yellow)</span>
+      </div>
+
+      <div id="site-card-exit" class="site-card yellow">
+        <div class="site-name">Exit Channel</div>
+        <div class="site-prob" id="prob-exit">20%</div>
+        <span class="site-status" id="status-exit">Possible (Yellow)</span>
+      </div>
+
+      <div id="site-card-inner" class="site-card red">
+        <div class="site-name">Inner Bystander</div>
+        <div class="site-prob" id="prob-inner">5%</div>
+        <span class="site-status" id="status-inner">Unlikely (Red)</span>
+      </div>
+
+      <div id="site-card-outer" class="site-card red">
+        <div class="site-name">Outer Bystander</div>
+        <div class="site-prob" id="prob-outer">2%</div>
+        <span class="site-status" id="status-outer">Unlikely (Red)</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- BOTTOM SECTION: CLINICAL RATIONALE LEGEND -->
+  <div class="card">
+    <h2>4. Electrophysiological Rationale Legend</h2>
+    <p class="sub">Key factual mechanisms governing the diagnostic hierarchy of entrainment mapping in scar-related VT.</p>
+    
+    <div class="rationale-grid">
+      
+      <div class="rationale-card">
+        <div class="rationale-header">
+          <div class="rationale-title">Rank 1: S–QRS vs EGM–QRS Alignment</div>
+          <span class="rank-badge">Highest Specificity</span>
+        </div>
+        <p class="rationale-text">
+          During VT, the catheter records a local potential preceding surface QRS onset (<span class="rationale-highlight">EGM–QRS</span>). During entrainment, pacing captures tissue and conducts to the exit (<span class="rationale-highlight">S–QRS</span>). In a true critical channel, <span class="rationale-highlight">S–QRS ≈ EGM–QRS (within ≤ 20 ms)</span>. 
+          <br><br>
+          <em>Why it matters:</em> An <strong>Inner Bystander</strong> (dead-end branch) has a short PPI ≤ 30 ms and concealed fusion, but pacing inside it requires wavefront propagation down to the dead end and back out into the circuit before reaching the exit, making <span class="rationale-highlight">S–QRS &lt; EGM–QRS</span>. Alignment is the single most specific test to rule out dead ends.
+        </p>
+      </div>
+
+      <div class="rationale-card">
+        <div class="rationale-header">
+          <div class="rationale-title">Rank 2: PPI − VTCL Difference</div>
+          <span class="rank-badge">High Specificity</span>
+        </div>
+        <p class="rationale-text">
+          The Post-Pacing Interval (<span class="rationale-highlight">PPI</span>) measures the total revolution time from the stimulus artifact back to the pacing catheter site. 
+          <br><br>
+          <em>Why it matters:</em> A difference of <span class="rationale-highlight">PPI − VTCL ≤ 30 ms</span> proves the catheter is positioned within or immediately adjacent to the active re-entrant circuit. A <span class="rationale-highlight">PPI − VTCL &gt; 30 ms</span> indicates an <strong>Outer Bystander</strong> or remote myocardium located outside the active macro-reentrant path.
+        </p>
+      </div>
+
+      <div class="rationale-card">
+        <div class="rationale-header">
+          <div class="rationale-title">Rank 3: 12-Lead Paced ECG Fusion</div>
+          <span class="rank-badge">High Sensitivity</span>
+        </div>
+        <p class="rationale-text">
+          Assesses surface ECG morphology match between paced entrainment and spontaneous VT.
+          <br><br>
+          <em>Why it matters:</em> <span class="rationale-highlight">Concealed Fusion</span> (identical 12/12 lead match) confirms the paced wavefront enters a protected slow channel and exits exclusively through the intrinsic circuit exit. <span class="rationale-highlight">Manifest Fusion</span> indicates dual activation (pacing artifact capturing adjacent healthy myocardium directly), ruling out pacing within a protected central channel.
+        </p>
+      </div>
+
+      <div class="rationale-card">
+        <div class="rationale-header">
+          <div class="rationale-title">Rank 4: S–QRS / VTCL % Ratio</div>
+          <span class="rank-badge">Spatial Localization</span>
+        </div>
+        <p class="rationale-text">
+          Represents the relative conduction time through the remaining protected pathway from the pacing site to myocardial breakout.
+          <br><br>
+          <em>Why it matters:</em> Once circuit participation is confirmed, this ratio sub-localizes position along the corridor:
+          <br>• <strong>Entrance:</strong> <span class="rationale-highlight">&gt; 70% VTCL</span> (long transit through entire channel)
+          <br>• <strong>Mid-Isthmus:</strong> <span class="rationale-highlight">30–70% VTCL</span> (intermediate corridor site)
+          <br>• <strong>Exit:</strong> <span class="rationale-highlight">&lt; 30% VTCL</span> (&lt; 40 ms; immediate breakout)
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+const matchSlider = document.getElementById('match-slider');
+const ppiSlider = document.getElementById('ppi-slider');
+const fusionSelect = document.getElementById('fusion-select');
+const sqrsSlider = document.getElementById('sqrs-slider');
+const resetBtn = document.getElementById('reset-btn');
+
+const matchVal = document.getElementById('match-val');
+const ppiVal = document.getElementById('ppi-val');
+const sqrsVal = document.getElementById('sqrs-val');
+
+let selectedSite = 'mid';
+
+// Canvas Multi-Channel Electrogram Renderer
+const canvas = document.getElementById('egmCanvas');
+const ctx = canvas.getContext('2d');
+
+function drawElectrograms() {
+  const w = canvas.width;
+  const h = canvas.height;
+  
+  ctx.fillStyle = "#090d16";
+  ctx.fillRect(0, 0, w, h);
+
+  // Background Grid Lines
+  ctx.strokeStyle = "#1e293b";
+  ctx.lineWidth = 1;
+  for (let x = 0; x < w; x += 30) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+  }
+  for (let y = 0; y < h; y += 25) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+  }
+
+  // QRS Onset Reference Line
+  const qrsX = w * 0.65;
+  ctx.strokeStyle = "#ef4444";
+  ctx.setLineDash([4, 4]);
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(qrsX, 0);
+  ctx.lineTo(qrsX, h);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = "#f87171";
+  ctx.font = "bold 10px sans-serif";
+  ctx.fillText("QRS Onset", qrsX + 6, 14);
+
+  // Channel Labels & Definitions
+  const channels = [
+    { id: 'entrance', label: '1. Entrance (ENT)', color: '#3b82f6', egmX: qrsX - 180, spikeType: 'sharp' },
+    { id: 'early',    label: '2. Early Isthmus',  color: '#60a5fa', egmX: qrsX - 135, spikeType: 'sharp' },
+    { id: 'mid',      label: '3. Mid Isthmus',    color: '#ef4444', egmX: qrsX - 90,  spikeType: 'fractionated' },
+    { id: 'late',     label: '4. Late Isthmus',   color: '#3b82f6', egmX: qrsX - 45,  spikeType: 'sharp' },
+    { id: 'exit',     label: '5. Exit (EXIT)',    color: '#22c55e', egmX: qrsX - 15,  spikeType: 'presystolic' },
+    { id: 'inner',    label: '6. Inner Bystander',color: '#f59e0b', egmX: qrsX - 90,  spikeType: 'bystander' },
+    { id: 'outer',    label: '7. Outer Bystander',color: '#a855f7', egmX: qrsX,       spikeType: 'farfield' },
+    { id: 'surface',  label: 'Surface ECG (VT)', color: '#ffffff', egmX: qrsX,       spikeType: 'surface' }
+  ];
+
+  const rowH = h / channels.length;
+
+  channels.forEach((ch, idx) => {
+    const yCenter = rowH * idx + rowH / 2;
+    const isSelected = (selectedSite === ch.id) || (selectedSite === 'early' && ch.id === 'early') || (selectedSite === 'late' && ch.id === 'late');
+
+    // Highlight row if selected
+    if (isSelected && ch.id !== 'surface') {
+      ctx.fillStyle = "rgba(30, 58, 138, 0.4)";
+      ctx.fillRect(0, rowH * idx, w, rowH);
+      ctx.strokeStyle = "#3b82f6";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(0, rowH * idx, w, rowH);
+    }
+
+    // Label Text
+    ctx.fillStyle = isSelected ? "#38bdf8" : (ch.id === 'surface' ? "#ffffff" : "#94a3b8");
+    ctx.font = isSelected ? "bold 11px sans-serif" : "10px sans-serif";
+    ctx.fillText(ch.label, 10, yCenter + 3);
+
+    // Draw Tracings
+    ctx.strokeStyle = ch.color;
+    ctx.lineWidth = isSelected ? 2.5 : 1.5;
+    ctx.beginPath();
+
+    if (ch.id === 'surface') {
+      // Wide QRS Complex Surface Waveform
+      ctx.moveTo(60, yCenter);
+      ctx.lineTo(qrsX - 20, yCenter);
+      // Delta-like slow onset
+      ctx.lineTo(qrsX - 5, yCenter - 4);
+      // Wide R wave peak
+      ctx.lineTo(qrsX + 15, yCenter - 22);
+      ctx.lineTo(qrsX + 35, yCenter + 20);
+      // S wave
+      ctx.lineTo(qrsX + 50, yCenter - 5);
+      // T wave
+      ctx.lineTo(qrsX + 80, yCenter + 10);
+      ctx.lineTo(qrsX + 110, yCenter);
+      ctx.lineTo(w - 20, yCenter);
+      ctx.stroke();
+
+      // Measurement Indicator line for Mid-diastolic potential
+      const midEgmX = qrsX - 90;
+      ctx.strokeStyle = "#f59e0b";
+      ctx.setLineDash([2, 2]);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(midEgmX, rowH * 2 + rowH/2);
+      ctx.lineTo(midEgmX, rowH * 7 + rowH/2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = "#f59e0b";
+      ctx.font = "9px sans-serif";
+      ctx.fillText("Mid-diastolic Potential", midEgmX - 45, rowH * 2 - 2);
+
+    } else {
+      // Baseline with local spike potentials
+      const startX = 140;
+      ctx.moveTo(startX, yCenter);
+      
+      for (let x = startX; x < w - 20; x += 2) {
+        let y = yCenter;
+        const dist = Math.abs(x - ch.egmX);
+
+        if (ch.spikeType === 'fractionated' && dist < 18) {
+          // Fractionated, multi-peaked mid-isthmus potential
+          y += (Math.sin(x * 0.8) * 12) * Math.exp(-dist / 8);
+        } else if (ch.spikeType === 'bystander' && dist < 12) {
+          // Sharp double spike potential
+          y += (Math.sin(x * 1.2) * 10) * Math.exp(-dist / 5);
+        } else if (dist < 10) {
+          // Sharp single spike potential
+          y += (Math.sin(x * 1.5) * 14) * Math.exp(-dist / 4);
+        }
+
+        // Add far-field ventricular signal aligned with QRS onset
+        const ffDist = Math.abs(x - qrsX);
+        if (ffDist < 25 && ch.spikeType !== 'farfield') {
+          y += (Math.sin(x * 0.4) * 6) * Math.exp(-ffDist / 12);
+        } else if (ffDist < 30 && ch.spikeType === 'farfield') {
+          // Pure far-field signal on outer bystander
+          y += (Math.sin(x * 0.3) * 14) * Math.exp(-ffDist / 15);
+        }
+
+        ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+  });
+}
+
+// SVG Interactive Click Handler
+document.querySelectorAll('.site').forEach(site => {
+  site.addEventListener('click', () => {
+    document.querySelectorAll('.site').forEach(s => s.classList.remove('site-active'));
+    site.classList.add('site-active');
+    
+    const siteId = site.id.replace('site-', '');
+    selectedSite = siteId;
+
+    if (siteId === 'mid') {
+      matchSlider.value = 5; ppiSlider.value = 15; fusionSelect.value = 'concealed'; sqrsSlider.value = 45;
+    } else if (siteId === 'entrance') {
+      matchSlider.value = 5; ppiSlider.value = 15; fusionSelect.value = 'concealed'; sqrsSlider.value = 80;
+    } else if (siteId === 'early') {
+      matchSlider.value = 5; ppiSlider.value = 15; fusionSelect.value = 'concealed'; sqrsSlider.value = 75;
+    } else if (siteId === 'late') {
+      matchSlider.value = 5; ppiSlider.value = 15; fusionSelect.value = 'concealed'; sqrsSlider.value = 35;
+    } else if (siteId === 'exit') {
+      matchSlider.value = 5; ppiSlider.value = 15; fusionSelect.value = 'concealed'; sqrsSlider.value = 20;
+    } else if (siteId === 'inner') {
+      matchSlider.value = 35; ppiSlider.value = 15; fusionSelect.value = 'concealed'; sqrsSlider.value = 45;
+    } else if (siteId === 'outer') {
+      matchSlider.value = 40; ppiSlider.value = 50; fusionSelect.value = 'manifest'; sqrsSlider.value = 80;
+    }
+
+    calculateCompositeLikelihood();
+    drawElectrograms();
+  });
+});
+
+function calculateCompositeLikelihood() {
+  const match = parseInt(matchSlider.value);
+  const ppi = parseInt(ppiSlider.value);
+  const fusion = fusionSelect.value;
+  const sqrs = parseInt(sqrsSlider.value);
+
+  matchVal.textContent = match + ' ms';
+  ppiVal.textContent = ppi + ' ms';
+  sqrsVal.textContent = sqrs + '%';
+
+  let scores = { mid: 10, entrance: 10, exit: 10, inner: 10, outer: 10 };
+
+  // 1. Rank 1: Alignment Weighting (30% total engine impact)
+  if (match <= 20) {
+    scores.mid += 30;
+    scores.entrance += 25;
+    scores.exit += 25;
+    scores.inner += 0;
+    scores.outer += 5;
+  } else {
+    scores.inner += 30;
+    scores.outer += 20;
+    scores.mid += 0;
+  }
+
+  // 2. Rank 2: PPI - VTCL Weighting (25% total engine impact)
+  if (ppi <= 30) {
+    scores.mid += 25;
+    scores.entrance += 25;
+    scores.exit += 25;
+    scores.inner += 20;
+    scores.outer += 0;
+  } else {
+    scores.outer += 25;
+    scores.mid += 0;
+    scores.entrance += 0;
+  }
+
+  // 3. Rank 3: ECG Fusion Weighting (20% total engine impact)
+  if (fusion === 'concealed') {
+    scores.mid += 20;
+    scores.entrance += 15;
+    scores.exit += 20;
+    scores.inner += 15;
+    scores.outer += 0;
+  } else {
+    scores.outer += 20;
+    scores.entrance += 10;
+  }
+
+  // 4. Rank 4: S-QRS / VTCL Ratio Sub-localization (25% weight)
+  if (sqrs >= 30 && sqrs <= 70) {
+    scores.mid += 25;
+    scores.entrance += 5;
+    scores.exit += 5;
+  } else if (sqrs > 70) {
+    scores.entrance += 25;
+    scores.mid += 10;
+  } else if (sqrs < 30) {
+    scores.exit += 25;
+    scores.mid += 10;
+  }
+
+  const sites = ['mid', 'entrance', 'exit', 'inner', 'outer'];
+  const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+
+  sites.forEach(site => {
+    const rawScore = scores[site];
+    const percentage = Math.min(99, Math.max(1, Math.round((rawScore / totalScore) * 100)));
+    
+    const cardEl = document.getElementById(`site-card-${site}`);
+    const probEl = document.getElementById(`prob-${site}`);
+    const statusEl = document.getElementById(`status-${site}`);
+
+    probEl.textContent = percentage + '%';
+
+    cardEl.classList.remove('green', 'yellow', 'red');
+
+    if (percentage >= 40) {
+      cardEl.classList.add('green');
+      statusEl.textContent = 'Likely (Green)';
+    } else if (percentage >= 15) {
+      cardEl.classList.add('yellow');
+      statusEl.textContent = 'Possible (Yellow)';
+    } else {
+      cardEl.classList.add('red');
+      statusEl.textContent = 'Unlikely (Red)';
+    }
+  });
+}
+
+resetBtn.addEventListener('click', () => {
+  matchSlider.value = 5;
+  ppiSlider.value = 15;
+  fusionSelect.value = 'concealed';
+  sqrsSlider.value = 45;
+  selectedSite = 'mid';
+  document.querySelectorAll('.site').forEach(s => s.classList.remove('site-active'));
+  calculateCompositeLikelihood();
+  drawElectrograms();
+});
+
+[matchSlider, ppiSlider, fusionSelect, sqrsSlider].forEach(el => {
+  el.addEventListener('input', () => {
+    calculateCompositeLikelihood();
+    drawElectrograms();
+  });
+});
+
+window.onload = () => {
+  calculateCompositeLikelihood();
+  drawElectrograms();
+};
+</script>
+
+</body>
+</html>
